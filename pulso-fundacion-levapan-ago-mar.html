@@ -227,8 +227,10 @@
   .q-panel-head{font-size:13.5px; font-weight:700; color:var(--ink); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:8px;}
   .q-panel-count{font-size:11px; font-weight:600; color:var(--muted,#8a8a8a); font-family:var(--font-num,'Helvetica Neue',Arial,sans-serif); white-space:nowrap;}
   .q-panel-content{display:flex; align-items:center; gap:22px; flex-wrap:wrap;}
-  .gauge-wrap-lg{position:relative; width:100%; max-width:340px; height:200px; flex:none; margin:0 auto;}
+  .gauge-wrap-lg{position:relative; width:100%; max-width:340px; height:232px; flex:none; margin:0 auto;}
   .gauge-wrap-lg canvas{position:absolute; inset:0;}
+  .donut-wrap-lg{position:relative; width:100%; max-width:230px; height:230px; flex:none; margin:0 auto;}
+  .donut-wrap-lg canvas{position:absolute; inset:0;}
   .gauge-center-lg{position:absolute; left:0; right:0; top:56%; text-align:center; pointer-events:none;}
   .gauge-center-lg .gv{font-family:var(--font-num); font-size:23px; font-weight:700; color:var(--ink);}
   .legend-list{display:flex; flex-direction:column; gap:10px; flex:none; width:180px;}
@@ -334,19 +336,6 @@
         <div class="sub" id="kpiDeltaSub">puntos de índice</div>
       </div>
     </div>
-
-    <div class="kpi-grid kpi-row-proud">
-      <div class="kpi-card">
-        <div class="label">Orgullo · Agosto 2025</div>
-        <div class="value num" id="kpiProud2A">–</div>
-        <div class="sub" id="kpiProudSub2A">de quienes respondieron esta pregunta</div>
-      </div>
-      <div class="kpi-card">
-        <div class="label">Orgullo · Marzo 2026</div>
-        <div class="value num" id="kpiProud1M">–</div>
-        <div class="sub" id="kpiProudSub1M">de quienes respondieron esta pregunta</div>
-      </div>
-    </div>
   </section>
 
   <section id="compareSection">
@@ -362,6 +351,31 @@
     <div class="section-head"><span class="num-tag">3</span><h2>Detalle por pregunta</h2></div>
     <p class="section-desc">Cada medidor muestra el conteo y la proporción de Promotores, Pasivos y No conformes por pulso.</p>
     <div class="q-grid" id="qGrid"></div>
+    <div class="q-card" style="margin-top:20px;">
+      <div class="q-title-bar">
+        <h3>¿Te sientes orgulloso/a de trabajar aquí?</h3>
+      </div>
+      <div class="q-body">
+        <div class="q-panel left">
+          <div class="q-panel-head"><span>Orgullo · Agosto 2025</span><span class="q-panel-count" id="proudcount-2a">–</span></div>
+          <div class="q-panel-content">
+            <div class="donut-wrap-lg">
+              <canvas id="proud-2a"></canvas>
+            </div>
+            <div class="legend-list" id="pl-2a"></div>
+          </div>
+        </div>
+        <div class="q-panel">
+          <div class="q-panel-head"><span>Orgullo · Marzo 2026</span><span class="q-panel-count" id="proudcount-1m">–</span></div>
+          <div class="q-panel-content">
+            <div class="donut-wrap-lg">
+              <canvas id="proud-1m"></canvas>
+            </div>
+            <div class="legend-list" id="pl-1m"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="rankSection">
@@ -682,9 +696,88 @@ const halfDonutOpts = {
   plugins:{legend:{display:false}, tooltip:{enabled:true}},
   animation:{duration:400},
   responsive:true, maintainAspectRatio:false,
+  layout:{padding:{top:4, left:46, right:46, bottom:10}},
 };
 const gaugeSegmentLabelPlugin = {
   id: 'gaugeSegmentLabel',
+  afterDraw(chart){
+    const {ctx} = chart;
+    const meta = chart.getDatasetMeta(0);
+    const dataset = chart.data.datasets[0];
+    const total = (dataset.data || []).reduce((a,b)=>a+(b||0),0);
+    if(total<=0) return;
+    // Segments under this share of the total are too thin for their percentage
+    // to fit legibly inside the band, and when two thin segments sit next to
+    // each other (e.g. Pasivos/No conformes both ~2%) their inline labels land
+    // on top of one another. Those get pushed outside the ring with a leader
+    // line instead, fanning out so consecutive thin segments don't collide.
+    let thinIndex = 0;
+    meta.data.forEach((arc, i) => {
+      const value = dataset.data[i];
+      if(!value) return;
+      const pct = value/total*100;
+      const props = arc.getProps(['x','y','startAngle','endAngle','innerRadius','outerRadius'], true);
+      const mid = (props.startAngle + props.endAngle)/2;
+      ctx.save();
+      if(pct < 8){
+        const edgeR = (props.innerRadius + props.outerRadius)/2;
+        const ex = props.x + Math.cos(mid)*edgeR;
+        const ey = props.y + Math.sin(mid)*edgeR;
+        const labelR = props.outerRadius + 13 + thinIndex*15;
+        const lx = props.x + Math.cos(mid)*labelR;
+        const ly = props.y + Math.sin(mid)*labelR;
+        ctx.strokeStyle = '#9a9a9a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(lx, ly);
+        ctx.stroke();
+        ctx.font = '700 12.5px Helvetica Neue, Arial, sans-serif';
+        ctx.fillStyle = '#1a1f36';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pct.toFixed(1)+'%', lx, ly);
+        thinIndex++;
+      } else {
+        const r = (props.innerRadius + props.outerRadius)/2;
+        const x = props.x + Math.cos(mid)*r;
+        const y = props.y + Math.sin(mid)*r;
+        ctx.font = '700 15px Helvetica Neue, Arial, sans-serif';
+        ctx.fillStyle = '#1a1f36';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pct.toFixed(1)+'%', x, y);
+      }
+      ctx.restore();
+    });
+  }
+};
+
+function renderGauge(canvasId, catStats){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if(gaugeCharts[canvasId]) gaugeCharts[canvasId].destroy();
+  gaugeCharts[canvasId] = new Chart(ctx, {type:'doughnut', data:halfDonutData(catStats), options:halfDonutOpts, plugins:[gaugeSegmentLabelPlugin]});
+}
+
+function proudDonutData(yes, no){
+  return {
+    labels:['Sí','No'],
+    datasets:[{
+      data:[yes, no],
+      backgroundColor:[CAT_COLORS.P, CAT_COLORS.N],
+      borderWidth:0,
+    }]
+  };
+}
+const fullDonutOpts = {
+  cutout:'62%',
+  plugins:{legend:{display:false}, tooltip:{enabled:true}},
+  animation:{duration:400},
+  responsive:true, maintainAspectRatio:false,
+  layout:{padding:34},
+};
+const donutCalloutPlugin = {
+  id:'donutCallout',
   afterDraw(chart){
     const {ctx} = chart;
     const meta = chart.getDatasetMeta(0);
@@ -697,24 +790,59 @@ const gaugeSegmentLabelPlugin = {
       const pct = value/total*100;
       const props = arc.getProps(['x','y','startAngle','endAngle','innerRadius','outerRadius'], true);
       const mid = (props.startAngle + props.endAngle)/2;
-      const r = (props.innerRadius + props.outerRadius)/2;
-      const x = props.x + Math.cos(mid)*r;
-      const y = props.y + Math.sin(mid)*r;
+      const edgeR = props.outerRadius;
+      const labelR = edgeR + 22;
+      const ex = props.x + Math.cos(mid)*edgeR;
+      const ey = props.y + Math.sin(mid)*edgeR;
+      const lx = props.x + Math.cos(mid)*labelR;
+      const ly = props.y + Math.sin(mid)*labelR;
+      const onRight = Math.cos(mid) >= -0.001;
+      const textX = lx + (onRight ? 7 : -7);
       ctx.save();
-      ctx.font = '700 15px Helvetica Neue, Arial, sans-serif';
+      ctx.strokeStyle = '#a3a3a3';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(lx, ly);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ex, ey, 2.75, 0, Math.PI*2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 1.25;
+      ctx.strokeStyle = '#7a7a7a';
+      ctx.stroke();
+      ctx.textAlign = onRight ? 'left' : 'right';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = '700 16px Helvetica Neue, Arial, sans-serif';
       ctx.fillStyle = '#1a1f36';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pct.toFixed(1)+'%', x, y);
+      ctx.fillText(pct.toFixed(0)+'%', textX, ly - 1);
+      ctx.font = '600 11px Helvetica Neue, Arial, sans-serif';
+      ctx.fillStyle = '#8a8a8a';
+      ctx.fillText(value.toLocaleString('es-CO'), textX, ly + 13);
       ctx.restore();
     });
   }
 };
-
-function renderGauge(canvasId, catStats){
+const proudCharts = {};
+function renderProudDonut(canvasId, yes, no){
   const ctx = document.getElementById(canvasId).getContext('2d');
-  if(gaugeCharts[canvasId]) gaugeCharts[canvasId].destroy();
-  gaugeCharts[canvasId] = new Chart(ctx, {type:'doughnut', data:halfDonutData(catStats), options:halfDonutOpts, plugins:[gaugeSegmentLabelPlugin]});
+  if(proudCharts[canvasId]) proudCharts[canvasId].destroy();
+  proudCharts[canvasId] = new Chart(ctx, {type:'doughnut', data:proudDonutData(yes,no), options:fullDonutOpts, plugins:[donutCalloutPlugin]});
+}
+function updateProudLegend(elId, yes, no){
+  const el = document.getElementById(elId);
+  const rows = [
+    {label:'Sí', count:yes, color:CAT_COLORS.P},
+    {label:'No', count:no, color:CAT_COLORS.N},
+  ];
+  el.innerHTML = rows.map(r => `
+    <div class="legend-row">
+      <span class="chk" style="background:${r.color}">✓</span>
+      <span class="cat-label">${r.label}</span>
+      <span class="cat-count">${r.count.toLocaleString('es-CO')}</span>
+    </div>
+  `).join('');
 }
 
 function buildQuestionCards(){
@@ -906,10 +1034,14 @@ function render(){
   document.getElementById('kpiIndex2A').textContent = fmtIndex(stats2A.nps);
   document.getElementById('kpiCount1M').textContent = stats1M.count.toLocaleString('es-CO');
   document.getElementById('kpiIndex1M').textContent = fmtIndex(stats1M.nps);
-  document.getElementById('kpiProud2A').textContent = fmtPct(stats2A.proudPct);
-  document.getElementById('kpiProud1M').textContent = fmtPct(stats1M.proudPct);
-  document.getElementById('kpiProudSub2A').textContent = stats2A.proudTot>0 ? `${stats2A.proudS.toLocaleString('es-CO')} de ${stats2A.proudTot.toLocaleString('es-CO')} respondieron que sí` : 'de quienes respondieron esta pregunta';
-  document.getElementById('kpiProudSub1M').textContent = stats1M.proudTot>0 ? `${stats1M.proudS.toLocaleString('es-CO')} de ${stats1M.proudTot.toLocaleString('es-CO')} respondieron que sí` : 'de quienes respondieron esta pregunta';
+  const proudNo2A = stats2A.proudTot - stats2A.proudS;
+  const proudNo1M = stats1M.proudTot - stats1M.proudS;
+  renderProudDonut('proud-2a', stats2A.proudS, proudNo2A);
+  renderProudDonut('proud-1m', stats1M.proudS, proudNo1M);
+  updateProudLegend('pl-2a', stats2A.proudS, proudNo2A);
+  updateProudLegend('pl-1m', stats1M.proudS, proudNo1M);
+  document.getElementById('proudcount-2a').textContent = 'Participantes: ' + stats2A.proudTot;
+  document.getElementById('proudcount-1m').textContent = 'Participantes: ' + stats1M.proudTot;
 
   const delta = (stats2A.nps!==null && stats1M.nps!==null) ? stats1M.nps - stats2A.nps : null;
   const deltaEl = document.getElementById('kpiDelta');

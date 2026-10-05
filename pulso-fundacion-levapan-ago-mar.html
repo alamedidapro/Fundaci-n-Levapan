@@ -784,6 +784,7 @@ const donutCalloutPlugin = {
     const dataset = chart.data.datasets[0];
     const total = (dataset.data || []).reduce((a,b)=>a+(b||0),0);
     if(total<=0) return;
+    const margin = 8;
     meta.data.forEach((arc, i) => {
       const value = dataset.data[i];
       if(!value) return;
@@ -794,10 +795,39 @@ const donutCalloutPlugin = {
       const labelR = edgeR + 22;
       const ex = props.x + Math.cos(mid)*edgeR;
       const ey = props.y + Math.sin(mid)*edgeR;
-      const lx = props.x + Math.cos(mid)*labelR;
-      const ly = props.y + Math.sin(mid)*labelR;
+      let lx = props.x + Math.cos(mid)*labelR;
+      let ly = props.y + Math.sin(mid)*labelR;
       const onRight = Math.cos(mid) >= -0.001;
-      const textX = lx + (onRight ? 7 : -7);
+      const pctText = pct.toFixed(0)+'%';
+      const countText = value.toLocaleString('es-CO');
+      ctx.font = '700 16px Helvetica Neue, Arial, sans-serif';
+      const pctWidth = ctx.measureText(pctText).width;
+      ctx.font = '600 11px Helvetica Neue, Arial, sans-serif';
+      const countWidth = ctx.measureText(countText).width;
+      const maxTextWidth = Math.max(pctWidth, countWidth);
+      // Keep the two-line label (percentage + count) fully inside the canvas:
+      // a leader-line label near the top/bottom/side of the ring would otherwise
+      // have its text clipped by the canvas edge (e.g. the count cut off below
+      // a near-bottom label). Clamp the label point so both lines of text,
+      // in either reading direction, stay within the drawable area.
+      let textX = lx + (onRight ? 7 : -7);
+      if(onRight){
+        const rightEdge = textX + maxTextWidth;
+        if(rightEdge > chart.width - margin){
+          const shift = rightEdge - (chart.width - margin);
+          textX -= shift; lx -= shift;
+        }
+      } else {
+        const leftEdge = textX - maxTextWidth;
+        if(leftEdge < margin){
+          const shift = margin - leftEdge;
+          textX += shift; lx += shift;
+        }
+      }
+      const minLy = margin + 17;
+      const maxLy = chart.height - margin - 16;
+      if(ly < minLy) ly = minLy;
+      if(ly > maxLy) ly = maxLy;
       ctx.save();
       ctx.strokeStyle = '#a3a3a3';
       ctx.lineWidth = 1;
@@ -816,10 +846,10 @@ const donutCalloutPlugin = {
       ctx.textBaseline = 'alphabetic';
       ctx.font = '700 16px Helvetica Neue, Arial, sans-serif';
       ctx.fillStyle = '#1a1f36';
-      ctx.fillText(pct.toFixed(0)+'%', textX, ly - 1);
+      ctx.fillText(pctText, textX, ly - 1);
       ctx.font = '600 11px Helvetica Neue, Arial, sans-serif';
       ctx.fillStyle = '#8a8a8a';
-      ctx.fillText(value.toLocaleString('es-CO'), textX, ly + 13);
+      ctx.fillText(countText, textX, ly + 13);
       ctx.restore();
     });
   }

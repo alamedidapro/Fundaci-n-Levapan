@@ -357,7 +357,7 @@
       </div>
       <div class="q-body">
         <div class="q-panel left">
-          <div class="q-panel-head"><span>Orgullo · Marzo 2026</span><span class="q-panel-count" id="proudcount-2a">–</span></div>
+          <div class="q-panel-head"><span>Pulso Orgullo · Marzo 2026</span><span class="q-panel-count" id="proudcount-2a">–</span></div>
           <div class="q-panel-content">
             <div class="donut-wrap-lg">
               <canvas id="proud-2a"></canvas>
@@ -366,7 +366,7 @@
           </div>
         </div>
         <div class="q-panel">
-          <div class="q-panel-head"><span>Orgullo · Septiembre 2026</span><span class="q-panel-count" id="proudcount-1m">–</span></div>
+          <div class="q-panel-head"><span>Pulso Orgullo · Septiembre 2026</span><span class="q-panel-count" id="proudcount-1m">–</span></div>
           <div class="q-panel-content">
             <div class="donut-wrap-lg">
               <canvas id="proud-1m"></canvas>
@@ -719,7 +719,7 @@ const gaugeSegmentLabelPlugin = {
       const props = arc.getProps(['x','y','startAngle','endAngle','innerRadius','outerRadius'], true);
       const mid = (props.startAngle + props.endAngle)/2;
       ctx.save();
-      if(pct < 8){
+      if(pct < 2){
         const edgeR = (props.innerRadius + props.outerRadius)/2;
         const ex = props.x + Math.cos(mid)*edgeR;
         const ey = props.y + Math.sin(mid)*edgeR;
@@ -798,7 +798,7 @@ const donutCalloutPlugin = {
       let lx = props.x + Math.cos(mid)*labelR;
       let ly = props.y + Math.sin(mid)*labelR;
       const onRight = Math.cos(mid) >= -0.001;
-      const pctText = pct.toFixed(0)+'%';
+      const pctText = pct.toFixed(1)+'%';
       const countText = value.toLocaleString('es-CO');
       ctx.font = '700 16px Helvetica Neue, Arial, sans-serif';
       const pctWidth = ctx.measureText(pctText).width;

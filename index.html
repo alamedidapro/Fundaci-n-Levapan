@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulso · Fundación Levapan</title>
+<style>
+  html,body{margin:0; padding:0; height:100%; font-family:'Work Sans','Helvetica Neue',Arial,sans-serif; background:#faf7ec;}
+  #tabbar{
+    display:flex; gap:8px; padding:10px 14px; background:#ffffff;
+    border-bottom:1px solid #e7e2d2; position:sticky; top:0; z-index:10;
+  }
+  .tab-btn{
+    appearance:none; border:1px solid #e0dccb; background:#faf7ec; color:#5e5e5e;
+    font-family:inherit; font-size:13.5px; font-weight:600; padding:9px 16px;
+    border-radius:8px; cursor:pointer; transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn.active{ background:#c0392b; color:#ffffff; border-color:#c0392b; }
+  .tab-btn:hover:not(.active){ border-color:#c0392b; color:#c0392b; }
+  #frame-wrap{ position:absolute; top:48px; left:0; right:0; bottom:0; }
+  iframe{ width:100%; height:100%; border:0; display:block; }
+</style>
+</head>
+<body>
+  <div id="tabbar">
+    <button type="button" class="tab-btn active" data-src="pulso-fundacion-levapan-mar-sep.html" id="tab-marsep">Marzo vs Septiembre 2026</button>
+    <button type="button" class="tab-btn" data-src="pulso-fundacion-levapan-ago-mar.html" id="tab-agomar">Agosto 2025 vs Marzo 2026</button>
+  </div>
+  <div id="frame-wrap">
+    <iframe id="report-frame" src="pulso-fundacion-levapan-mar-sep.html" title="Reporte Pulso"></iframe>
+  </div>
+  <script>
+    var frame = document.getElementById('report-frame');
+    var buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        buttons.forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        var src = btn.getAttribute('data-src');
+        if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
+      });
+    });
+  </script>
+</body>
+</html>

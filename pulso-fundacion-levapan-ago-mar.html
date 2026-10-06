@@ -146,7 +146,7 @@
   .opt:hover{background:var(--paper);}
   .opt input{accent-color:var(--green-dark); flex:none;}
   .opt span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .opt.disabled{opacity:.35; pointer-events:none;}
+  .opt.disabled{display:none;}
   .reset-btn{
     background:var(--ink); color:#fff; border:none; border-radius:9px; padding:10px 16px;
     font-size:12.5px; font-weight:600; cursor:pointer; height:38px; margin-left:auto;
@@ -286,7 +286,6 @@
     <div class="top-meta">
       <div class="item">Pulsos <b>Agosto 2025 vs Marzo 2026</b></div>
       <div class="item">Direcciones corporativas <b id="metaDirections">–</b></div>
-      <div class="item">Ciudades <b id="metaCities">–</b></div>
     </div>
   </div>
 </header>
@@ -357,7 +356,7 @@
       </div>
       <div class="q-body">
         <div class="q-panel left">
-          <div class="q-panel-head"><span>Pulso Orgullo · Agosto 2025</span><span class="q-panel-count" id="proudcount-2a">–</span></div>
+          <div class="q-panel-head"><span>Pulso Agosto 2025</span><span class="q-panel-count" id="proudcount-2a">–</span></div>
           <div class="q-panel-content">
             <div class="donut-wrap-lg">
               <canvas id="proud-2a"></canvas>
@@ -366,7 +365,7 @@
           </div>
         </div>
         <div class="q-panel">
-          <div class="q-panel-head"><span>Pulso Orgullo · Marzo 2026</span><span class="q-panel-count" id="proudcount-1m">–</span></div>
+          <div class="q-panel-head"><span>Pulso Marzo 2026</span><span class="q-panel-count" id="proudcount-1m">–</span></div>
           <div class="q-panel-content">
             <div class="donut-wrap-lg">
               <canvas id="proud-1m"></canvas>
@@ -407,7 +406,7 @@ const barValueLabelPlugin = {
       meta.data.forEach((bar, index) => {
         const value = dataset.data[index];
         if(value === null || value === undefined || isNaN(value)) return;
-        const label = value.toFixed(1) + '%';
+        const label = value.toFixed(1).replace('.', ',') + '%';
         const props = bar.getProps(['x','y','base'], true);
         const barLength = Math.abs(props.x - props.base);
         ctx.save();
@@ -459,7 +458,7 @@ const QUESTION_TEXTS = [
 ];
 
 // ---------- FILTER STATE ----------
-const FILTER_DIMS = ['area','city','contract'];
+const FILTER_DIMS = ['area','contract'];
 const FILTER_TITLES = {area:'Área', city:'Ciudad', contract:'Tipo de contrato'};
 let selected = {}; // dim -> Set of indices (undefined/absent = all)
 FILTER_DIMS.forEach(d=> selected[d] = null); // null = all selected
@@ -578,10 +577,11 @@ function buildFilterBar(){
 
     footer.querySelector('.panel-accept').addEventListener('click', (e)=>{
       e.stopPropagation();
-      const checked = optionChks().filter(c=>c.checked).map(c=>parseInt(c.dataset.idx));
+      const enabledList = enabledChks();
+      const checked = enabledList.filter(c=>c.checked).map(c=>parseInt(c.dataset.idx));
       const textEl = btn.querySelector('.btn-text');
       let pill = btn.querySelector('.count-pill');
-      if(checked.length === values.length){
+      if(checked.length === enabledList.length){
         selected[dim] = null;
         textEl.textContent = 'Todos';
         if(pill) pill.remove();
@@ -663,23 +663,23 @@ function computeStats(rows){
 
 function fmtIndex(v){
   if(v===null) return '–';
-  return v.toFixed(1) + '%';
+  return v.toFixed(1).replace('.', ',') + '%';
 }
 function fmtDelta(v){
   if(v===null) return '–';
   const s = v>=0? '+' : '';
-  return s + v.toFixed(1);
+  return s + v.toFixed(1).replace('.', ',');
 }
 function fmtPct(v){
   if(v===null) return '–';
-  return v.toFixed(1)+'%';
+  return v.toFixed(1).replace('.', ',')+'%';
 }
 
 // ---------- CHART INSTANCES ----------
 // Force every canvas to render at a higher backing resolution than its CSS
 // size (then get scaled down by the browser), so text and arcs stay crisp
 // even on a standard (non-retina) 1x display, instead of looking soft.
-Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 3);
+Chart.defaults.devicePixelRatio = Math.max(window.devicePixelRatio || 1, 4);
 let waveChartInst=null;
 const gaugeCharts = {}; // key -> chart
 let areaChartInst=null;
@@ -690,7 +690,8 @@ function halfDonutData(cat){
     datasets:[{
       data:[cat.P, cat.A, cat.N],
       backgroundColor:[CAT_COLORS.P, CAT_COLORS.A, CAT_COLORS.N],
-      borderWidth:0,
+      borderColor:[CAT_COLORS.P, CAT_COLORS.A, CAT_COLORS.N],
+      borderWidth:1,
     }]
   };
 }
@@ -727,7 +728,7 @@ const gaugeSegmentLabelPlugin = {
       ctx.fillStyle = '#1a1f36';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(pct.toFixed(1)+'%', x, y);
+      ctx.fillText(pct.toFixed(1).replace('.', ',')+'%', x, y);
       ctx.restore();
     });
   }
@@ -745,7 +746,8 @@ function proudDonutData(yes, no){
     datasets:[{
       data:[yes, no],
       backgroundColor:[CAT_COLORS.P, CAT_COLORS.N],
-      borderWidth:0,
+      borderColor:[CAT_COLORS.P, CAT_COLORS.N],
+      borderWidth:1,
     }]
   };
 }
@@ -778,7 +780,7 @@ const donutCalloutPlugin = {
       let lx = props.x + Math.cos(mid)*labelR;
       let ly = props.y + Math.sin(mid)*labelR;
       const onRight = Math.cos(mid) >= -0.001;
-      const pctText = pct.toFixed(1)+'%';
+      const pctText = pct.toFixed(1).replace('.', ',')+'%';
       const countText = value.toLocaleString('es-CO');
       ctx.font = '700 16px Helvetica Neue, Arial, sans-serif';
       const pctWidth = ctx.measureText(pctText).width;
@@ -930,7 +932,7 @@ function renderQuestions(stats2A, stats1M){
       deltaEl.textContent='–'; deltaEl.className='q-delta flat';
     } else {
       const d = nps1M-nps2A;
-      deltaEl.textContent = (d>=0?'▲ +':'▼ ')+d.toFixed(1);
+      deltaEl.textContent = (d>=0?'▲ +':'▼ ')+d.toFixed(1).replace('.', ',');
       deltaEl.className = 'q-delta ' + (d>0.05?'up': d<-0.05?'down':'flat');
     }
   }
@@ -1064,7 +1066,6 @@ function render(){
 
 function initMeta(){
   document.getElementById('metaDirections').textContent = DIMS.direction.length;
-  document.getElementById('metaCities').textContent = DIMS.city.length;
 }
 
 buildFilterBar();
